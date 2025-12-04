@@ -15,6 +15,9 @@
     <link rel="apple-touch-icon" href="icon-192.png">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Firebase pour la synchronisation -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -63,6 +66,35 @@
             font-size: 1em;
         }
         .period-selector input:focus { outline: none; border-color: #1a1a2e; }
+
+        /* Sync status */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: #f8f9fa;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9ca3af;
+        }
+
+        .sync-status.connected .sync-dot { background: #10b981; }
+        .sync-status.syncing .sync-dot { background: #f59e0b; animation: pulse 1s infinite; }
+        .sync-status.error .sync-dot { background: #ef4444; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .sync-text { color: #666; }
 
         .card {
             background: white;
@@ -907,6 +939,10 @@
                 <label>Période :</label>
                 <input type="month" id="payPeriod">
             </div>
+            <div class="sync-status" id="syncStatus">
+                <span class="sync-dot"></span>
+                <span class="sync-text">Connexion...</span>
+            </div>
         </div>
 
         <div class="card">
@@ -940,6 +976,100 @@
 
     <script>
         let employeeId = 0;
+        let firebaseReady = false;
+        let isLoadingFromCloud = false;
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDJNPE21arpM6QkETx486Ha7MziMkkcldw",
+  authDomain: "proforsciage-paie.firebaseapp.com",
+  databaseURL: "https://proforsciage-paie-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "proforsciage-paie",
+  storageBucket: "proforsciage-paie.firebasestorage.app",
+  messagingSenderId: "991996494994",
+  appId: "1:991996494994:web:54e58f20082d7ff380d24b"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+        // Initialisation Firebase
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const database = firebase.database();
+            const dataRef = database.ref('paie');
+
+            // Écouter les changements en temps réel
+            dataRef.on('value', (snapshot) => {
+                const cloudData = snapshot.val();
+                if (cloudData && !isLoadingFromCloud) {
+                    isLoadingFromCloud = true;
+                    loadFromCloud(cloudData);
+                    updateSyncStatus('connected', 'Synchronisé');
+                    setTimeout(() => { isLoadingFromCloud = false; }, 500);
+                }
+            });
+
+            // Connexion établie
+            database.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    updateSyncStatus('connected', 'Synchronisé');
+                    firebaseReady = true;
+                } else {
+                    updateSyncStatus('error', 'Hors ligne');
+                }
+            });
+
+        } catch (error) {
+            console.log('Firebase non configuré:', error);
+            updateSyncStatus('error', 'Non configuré');
+        }
+
+        function updateSyncStatus(status, text) {
+            const el = document.getElementById('syncStatus');
+            if (el) {
+                el.className = 'sync-status ' + status;
+                el.querySelector('.sync-text').textContent = text;
+            }
+        }
+
+        function saveToCloud() {
+            if (!firebaseReady || isLoadingFromCloud) return;
+
+            updateSyncStatus('syncing', 'Enregistrement...');
+
+            const data = getDataObject();
+            firebase.database().ref('paie').set(data)
+                .then(() => {
+                    updateSyncStatus('connected', 'Synchronisé');
+                })
+                .catch((error) => {
+                    console.error('Erreur sync:', error);
+                    updateSyncStatus('error', 'Erreur sync');
+                });
+        }
+
+        function loadFromCloud(data) {
+            // Vider les employés actuels
+            document.getElementById('employeesList').innerHTML = '';
+            employeeId = 0;
+
+            // Charger la période et notes
+            if (data.period) document.getElementById('payPeriod').value = data.period;
+            document.getElementById('notes').value = data.notes || '';
+
+            // Charger les employés
+            if (data.employees?.length) {
+                data.employees.forEach(emp => addEmployee(emp.name, emp));
+            }
+
+            updateCount();
+        }
 
         // ========== CONFIGURATION SMIC & TAUX 2025 ==========
         const CONFIG = {
@@ -1718,11 +1848,12 @@
             saveData();
         }
 
-        function saveData() {
+        function getDataObject() {
             const data = {
                 period: document.getElementById('payPeriod').value,
                 notes: document.getElementById('notes').value,
-                employees: []
+                employees: [],
+                lastUpdate: new Date().toISOString()
             };
 
             document.querySelectorAll('.employee-card').forEach(card => {
@@ -1781,7 +1912,15 @@
                 data.employees.push(emp);
             });
 
+            return data;
+        }
+
+        function saveData() {
+            const data = getDataObject();
             localStorage.setItem('proforsciage_paie_v5', JSON.stringify(data));
+
+            // Synchroniser avec Firebase
+            saveToCloud();
         }
 
         function loadData() {
