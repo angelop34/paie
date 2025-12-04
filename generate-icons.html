@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Générateur d'icônes</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; text-align: center; background: #f0f2f5; }
+        h1 { color: #1a1a2e; }
+        .icons { display: flex; gap: 30px; justify-content: center; margin: 30px 0; }
+        canvas { border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .download-links { margin-top: 20px; }
+        .download-links a {
+            display: inline-block;
+            margin: 10px;
+            padding: 12px 24px;
+            background: #1a1a2e;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .download-links a:hover { background: #16213e; }
+        .instructions {
+            max-width: 600px;
+            margin: 30px auto;
+            text-align: left;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .instructions h3 { color: #1a1a2e; margin-bottom: 15px; }
+        .instructions ol { padding-left: 20px; }
+        .instructions li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Générateur d'icônes Proforsciage</h1>
+    <p>Cliquez sur les boutons ci-dessous pour télécharger les icônes</p>
+
+    <div class="icons">
+        <div>
+            <canvas id="icon192" width="192" height="192"></canvas>
+            <p>192x192</p>
+        </div>
+        <div>
+            <canvas id="icon512" width="512" height="512"></canvas>
+            <p>512x512</p>
+        </div>
+    </div>
+
+    <div class="download-links">
+        <a href="#" id="download192">Télécharger icon-192.png</a>
+        <a href="#" id="download512">Télécharger icon-512.png</a>
+    </div>
+
+    <div class="instructions">
+        <h3>Instructions :</h3>
+        <ol>
+            <li>Cliquez sur <strong>"Télécharger icon-192.png"</strong></li>
+            <li>Cliquez sur <strong>"Télécharger icon-512.png"</strong></li>
+            <li>Placez les deux fichiers dans le même dossier que <code>elements-paie.html</code></li>
+            <li>Supprimez ce fichier <code>generate-icons.html</code> (optionnel)</li>
+        </ol>
+    </div>
+
+    <script>
+        function drawIcon(canvas) {
+            const ctx = canvas.getContext('2d');
+            const size = canvas.width;
+            const radius = size * 0.15;
+
+            // Fond avec dégradé
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#16213e');
+
+            // Rectangle arrondi
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Lettre P
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.55}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('P', size / 2, size / 2 - size * 0.02);
+
+            // Ligne décorative
+            ctx.fillStyle = '#667eea';
+            const lineY = size * 0.78;
+            const lineHeight = size * 0.016;
+            const lineWidth = size * 0.76;
+            const lineX = (size - lineWidth) / 2;
+            ctx.beginPath();
+            ctx.roundRect(lineX, lineY, lineWidth, lineHeight, lineHeight / 2);
+            ctx.fill();
+        }
+
+        // Dessiner les icônes
+        const canvas192 = document.getElementById('icon192');
+        const canvas512 = document.getElementById('icon512');
+
+        drawIcon(canvas192);
+        drawIcon(canvas512);
+
+        // Téléchargement
+        document.getElementById('download192').addEventListener('click', (e) => {
+            e.preventDefault();
+            const link = document.createElement('a');
+            link.download = 'icon-192.png';
+            link.href = canvas192.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('download512').addEventListener('click', (e) => {
+            e.preventDefault();
+            const link = document.createElement('a');
+            link.download = 'icon-512.png';
+            link.href = canvas512.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html>

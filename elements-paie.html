@@ -1,0 +1,2309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éléments de Paie - Proforsciage</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Proforsciage">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            min-height: 100vh;
+            padding: 20px;
+            color: #1a1a2e;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+
+        .logo-icon {
+            width: 45px; height: 45px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 1.3em;
+        }
+
+        .logo h1 { font-size: 1.4em; color: #1a1a2e; }
+        .logo p { color: #666; font-size: 0.85em; }
+
+        .period-selector { display: flex; align-items: center; gap: 12px; }
+        .period-selector label { font-weight: 500; color: #666; font-size: 0.9em; }
+        .period-selector input {
+            padding: 10px 14px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+        .period-selector input:focus { outline: none; border-color: #1a1a2e; }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            font-size: 1em;
+            color: #1a1a2e;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .card-header h2 span { color: #666; font-weight: normal; font-size: 0.9em; }
+        .card-body { padding: 22px; }
+
+        .btn {
+            padding: 9px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-dark { background: #1a1a2e; color: white; }
+        .btn-dark:hover { background: #16213e; }
+        .btn-outline { background: white; border: 2px solid #e1e5e9; color: #666; }
+        .btn-outline:hover { border-color: #1a1a2e; color: #1a1a2e; }
+        .btn-danger { background: #fee2e2; color: #dc2626; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-success { background: #10b981; color: white; padding: 12px 24px; font-size: 0.95em; }
+        .btn-success:hover { background: #059669; }
+
+        /* Employee Cards */
+        .employee-card {
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: all 0.2s;
+        }
+
+        .employee-card.selected { border-color: #10b981; background: #f0fdf4; }
+
+        .employee-header {
+            padding: 15px 18px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .employee-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        /* Category selector */
+        .category-selector {
+            display: flex;
+            gap: 0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid #e1e5e9;
+        }
+
+        .category-btn {
+            padding: 6px 12px;
+            border: none;
+            background: #f8f9fa;
+            font-size: 0.75em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .category-btn:first-child { border-right: 1px solid #e1e5e9; }
+        .category-btn:hover { background: #e9ecef; }
+
+        .category-btn.active {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .category-btn.active.etam {
+            background: #7c3aed;
+        }
+
+        /* Salary input for ETAM */
+        .salary-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f3f0ff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 2px solid #7c3aed;
+        }
+
+        .salary-input-group label {
+            font-size: 0.75em;
+            color: #7c3aed;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .salary-input-group input {
+            width: 80px;
+            padding: 4px 8px;
+            border: 1px solid #c4b5fd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            text-align: right;
+        }
+
+        .salary-input-group input:focus {
+            outline: none;
+            border-color: #7c3aed;
+        }
+
+        .salary-input-group span {
+            font-size: 0.8em;
+            color: #7c3aed;
+        }
+
+        /* Section visibility */
+        .section-ouvrier-only { display: block; }
+        .employee-card.etam .section-ouvrier-only { display: none; }
+
+        /* ETAM badge */
+        .etam-badge {
+            background: #7c3aed;
+            color: white;
+            font-size: 0.65em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .employee-info input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #10b981; }
+        .employee-info input[type="text"] {
+            font-size: 1em;
+            font-weight: 600;
+            color: #1a1a2e;
+            border: 2px solid transparent;
+            background: transparent;
+            padding: 4px 8px;
+            border-radius: 4px;
+            min-width: 220px;
+            max-width: 280px;
+            transition: all 0.2s;
+        }
+        .employee-info input[type="text"]:hover { background: white; border-color: #e1e5e9; }
+        .employee-info input[type="text"]:focus { outline: none; background: white; border-color: #667eea; }
+        .employee-info input[type="text"].error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        /* Trajet rows */
+        .trajet-rows { margin-top: 8px; }
+        .trajet-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+        .trajet-row select { flex: 2; padding: 8px; border: 2px solid #e1e5e9; border-radius: 6px; }
+        .trajet-row input { flex: 1; padding: 8px; border: 2px solid #e1e5e9; border-radius: 6px; text-align: center; }
+        .trajet-row select:focus, .trajet-row input:focus { outline: none; border-color: #667eea; }
+        .btn-add-trajet {
+            padding: 8px 12px;
+            border: 2px dashed #d1d5db;
+            border-radius: 6px;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        .btn-add-trajet:hover { border-color: #667eea; color: #667eea; }
+
+        /* Simulation Box */
+        .simulation-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sim-item { text-align: center; }
+        .sim-label { font-size: 0.7em; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sim-value { font-size: 1.3em; font-weight: 700; }
+        .sim-divider { width: 1px; height: 35px; background: rgba(255,255,255,0.3); }
+
+        .employee-body { padding: 18px; }
+
+        .section-group { margin-bottom: 20px; }
+        .section-group:last-child { margin-bottom: 0; }
+
+        .section-label {
+            font-size: 0.7em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-label .info {
+            font-weight: normal;
+            text-transform: none;
+            color: #10b981;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .field { display: flex; flex-direction: column; }
+        .field label { font-size: 0.75em; color: #666; margin-bottom: 4px; font-weight: 500; }
+        .field .sublabel { font-size: 0.65em; color: #999; font-weight: normal; }
+
+        .field input, .field select {
+            padding: 9px 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .field input:hover, .field select:hover { border-color: #c5ccd4; }
+        .field input:focus, .field select:focus { outline: none; border-color: #667eea; }
+        .field input::placeholder { color: #bbb; }
+
+        .field-with-unit {
+            position: relative;
+        }
+
+        .field-with-unit input {
+            width: 100%;
+            padding-right: 35px;
+        }
+
+        .field-with-unit .unit {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            color: #999;
+            font-size: 0.8em;
+            pointer-events: none;
+        }
+
+        /* Primes spéciales BTP */
+        .primes-btp {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 8px;
+        }
+
+        .prime-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            min-height: 52px;
+        }
+
+        .prime-item:hover { border-color: #e1e5e9; background: #f3f4f6; }
+        .prime-item.active { background: #f0fdf4; border-color: #10b981; }
+        .prime-item.active.exonere { background: #fffbeb; border-color: #f59e0b; }
+
+        .prime-item input[type="checkbox"] {
+            width: 18px; height: 18px;
+            accent-color: #10b981;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .prime-item.exonere input[type="checkbox"] {
+            accent-color: #f59e0b;
+        }
+
+        .prime-item .prime-info {
+            min-width: 0;
+            overflow: hidden;
+        }
+        .prime-item .prime-name {
+            font-size: 0.85em;
+            font-weight: 500;
+            color: #1a1a2e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .prime-item .prime-rate {
+            font-size: 0.7em;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .prime-inputs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .prime-item input[type="number"] {
+            width: 60px;
+            padding: 8px 6px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 0.9em;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .prime-item input[type="number"]:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .prime-item.exonere input[type="number"]:focus {
+            border-color: #f59e0b;
+        }
+
+        .prime-item input[type="number"]:disabled {
+            background: #f3f4f6;
+            color: #9ca3af;
+        }
+
+        .prime-item select.prime-unit {
+            width: auto;
+            min-width: 45px;
+            padding: 8px 6px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 0.85em;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .prime-item select.prime-unit:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+
+        .prime-item.exonere select.prime-unit:focus {
+            border-color: #f59e0b;
+        }
+
+        .prime-item select.prime-unit:disabled {
+            background: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9em;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 350px;
+        }
+
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+        .toast.info { background: #3b82f6; }
+
+        .toast-icon { font-size: 1.2em; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* Input error states */
+        .field input.error,
+        .prime-item input.error {
+            border-color: #ef4444 !important;
+            background: #fef2f2;
+        }
+
+        .field input.error:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+
+        .error-message {
+            font-size: 0.7em;
+            color: #ef4444;
+            margin-top: 4px;
+        }
+
+        /* Absence avec dates - design compact */
+        .absences-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 10px;
+        }
+
+        .absence-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .absence-item:hover {
+            background: #f3f4f6;
+            border-color: #e1e5e9;
+        }
+
+        .absence-item.has-value {
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
+
+        .absence-label {
+            flex: 0 0 auto;
+            min-width: 110px;
+        }
+
+        .absence-label .name {
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .absence-label .sublabel {
+            font-size: 0.65em;
+            color: #dc2626;
+            margin-top: 1px;
+        }
+
+        .absence-label .sublabel.neutral {
+            color: #888;
+        }
+
+        .absence-qty {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 0 0 auto;
+        }
+
+        .absence-qty input {
+            width: 50px;
+            padding: 6px 8px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        .absence-qty input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .absence-qty span {
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        .absence-dates {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .absence-dates input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 0.8em;
+            transition: all 0.2s;
+        }
+
+        .absence-dates input:hover { border-color: #c5ccd4; }
+        .absence-dates input:focus { outline: none; border-color: #667eea; }
+        .absence-dates input::placeholder { color: #bbb; font-style: italic; font-size: 0.95em; }
+
+        .absence-dates input.has-value {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        /* Confirm dialog overlay */
+        .confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .confirm-dialog {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            animation: scaleIn 0.2s ease;
+        }
+
+        .confirm-dialog h3 {
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        .confirm-dialog p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+
+        .confirm-dialog .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        /* Custom elements */
+        .custom-section { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e1e5e9; }
+        .custom-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+        .custom-row input { flex: 1; padding: 8px 10px; border: 2px solid #e1e5e9; border-radius: 6px; }
+        .custom-row input:focus { outline: none; border-color: #667eea; }
+
+        .btn-remove {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #fee2e2;
+            color: #dc2626;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        .btn-remove:hover { background: #fecaca; }
+
+        .btn-add-custom {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #d1d5db;
+            border-radius: 6px;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .btn-add-custom:hover { border-color: #667eea; color: #667eea; }
+
+        /* Notes */
+        .notes-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 0.9em;
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .notes-textarea:focus { outline: none; border-color: #667eea; }
+
+        /* Actions */
+        .actions-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 22px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .actions-left { display: flex; gap: 8px; flex-wrap: wrap; }
+        .actions-right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* Modal aperçu PDF */
+        .preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .preview-header {
+            background: #1a1a2e;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .preview-header h3 {
+            font-size: 1em;
+            font-weight: 600;
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .preview-body {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .preview-body iframe {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        /* Bannière installation PWA */
+        .install-banner {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            z-index: 9999;
+            align-items: center;
+            gap: 15px;
+            max-width: 90%;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .install-banner-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #1a1a2e;
+            font-size: 1.2em;
+            flex-shrink: 0;
+        }
+
+        .install-banner-text {
+            flex: 1;
+        }
+
+        .install-banner-text strong {
+            display: block;
+            font-size: 0.95em;
+        }
+
+        .install-banner-text span {
+            font-size: 0.8em;
+            opacity: 0.8;
+        }
+
+        .install-banner-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .install-banner .btn-install {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .install-banner .btn-dismiss {
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .simulation-box { width: 100%; justify-content: center; }
+            .actions-bar { flex-direction: column; }
+            .actions-left { width: 100%; justify-content: center; }
+            .actions-right { width: 100%; justify-content: center; }
+            .actions-right .btn { flex: 1; justify-content: center; }
+            .preview-body { padding: 10px; }
+            .preview-body iframe { border-radius: 0; }
+            .install-banner { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Bannière d'installation PWA -->
+    <div class="install-banner" id="installBanner">
+        <div class="install-banner-icon">P</div>
+        <div class="install-banner-text">
+            <strong>Installer Proforsciage</strong>
+            <span>Accès rapide depuis votre bureau</span>
+        </div>
+        <div class="install-banner-actions">
+            <button class="btn-install" id="installBtn">Installer</button>
+            <button class="btn-dismiss" id="dismissInstall">×</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <div class="logo-icon">P</div>
+                <div>
+                    <h1>Proforsciage</h1>
+                    <p>Éléments variables de paie - BTP</p>
+                </div>
+            </div>
+            <div class="period-selector">
+                <label>Période :</label>
+                <input type="month" id="payPeriod">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Salariés <span id="employeeCount"></span></h2>
+                <button class="btn btn-dark" onclick="addEmployee()">+ Ajouter un salarié</button>
+            </div>
+            <div class="card-body" id="employeesList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Notes & observations</h2>
+            </div>
+            <div class="card-body">
+                <textarea class="notes-textarea" id="notes" placeholder="Informations complémentaires pour la comptable..."></textarea>
+            </div>
+        </div>
+
+        <div class="actions-bar">
+            <div class="actions-left">
+                <button class="btn btn-outline" onclick="selectAll()">Tout sélectionner</button>
+                <button class="btn btn-danger" onclick="deleteSelected()">Supprimer sélection</button>
+            </div>
+            <div class="actions-right">
+                <button class="btn btn-outline" onclick="previewPDF()" style="border-color:#667eea;color:#667eea;">Aperçu</button>
+                <button class="btn btn-success" onclick="generatePDF()">Générer le PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let employeeId = 0;
+
+        // ========== CONFIGURATION SMIC & TAUX 2025 ==========
+        const CONFIG = {
+            smic: {
+                horaire: 11.88,
+                mensuel: 1801.84,
+                heures: 151.67
+            },
+            tauxHS: {
+                hs25: 1.25,  // 14.85€
+                hs50: 1.50   // 17.82€
+            },
+            // Taux Occitanie 2025
+            indemnites: {
+                repas_soumis: 2.70,      // Partie soumise (dans le brut)
+                repas_exonere: 10.30,    // Partie exonérée (en net)
+                repas_total: 13.00,      // Total versé
+                trajet: {
+                    '0-5km': 0,
+                    'zone1a': 2.06,
+                    'zone1b': 2.58,
+                    'zone2': 3.87,
+                    'zone3': 5.16,
+                    'zone4': 6.45,
+                    'zone5': 7.74
+                }
+            },
+            // Majoration nuit (100% du taux horaire selon tes bulletins)
+            majorationNuit: 1.00, // 100% = taux horaire complet en majoration
+
+            // Primes BTP - SOUMISES à cotisations (vont dans le brut)
+            primesSoumises: [
+                { id: 'prime_exceptionnelle', name: 'Prime exceptionnelle', rate: null },
+                { id: 'prime_anciennete', name: "Prime d'ancienneté", rate: null },
+                { id: 'prime_assiduite', name: "Prime d'assiduité", rate: null },
+                { id: 'prime_rendement', name: 'Prime de rendement', rate: null },
+                { id: 'prime_deplacement', name: 'Indemnité grand déplacement', rate: null }
+            ],
+            // Primes BTP - NON SOUMISES (exonérées, versées en net)
+            primesNonSoumises: [
+                { id: 'prime_outillage', name: "Prime d'outillage", rate: 1.50 },
+                { id: 'prime_salissure', name: 'Prime de salissure', rate: 1.50 },
+                { id: 'prime_hauteur', name: 'Prime de hauteur', rate: 3.00 },
+                { id: 'prime_froid', name: 'Prime froid/intempéries', rate: 2.50 },
+                { id: 'prime_insalubre', name: 'Prime travaux insalubres', rate: 3.00 },
+                { id: 'prime_masque', name: 'Prime port du masque', rate: 2.00 },
+                { id: 'prime_amiante', name: 'Prime amiante/danger', rate: 5.00 },
+                { id: 'prime_poussiere', name: 'Prime poussière', rate: 2.00 }
+            ]
+        };
+
+        // Salariés par défaut
+        const defaultEmployees = [];
+
+        // ========== FONCTIONS UTILITAIRES UX ==========
+
+        // Toast notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type] || icons.info}</span>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto-remove after animation
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Validation des inputs
+        function validateInput(input) {
+            const value = parseFloat(input.value);
+
+            // Vérifier valeur négative
+            if (value < 0) {
+                input.classList.add('error');
+                input.value = 0;
+                showToast('Les valeurs négatives ne sont pas autorisées', 'warning');
+                return false;
+            }
+
+            // Vérifier valeur trop grande (protection)
+            if (value > 999999) {
+                input.classList.add('error');
+                showToast('Valeur trop élevée', 'warning');
+                return false;
+            }
+
+            input.classList.remove('error');
+            return true;
+        }
+
+        // Mise à jour visuelle des items d'absence
+        function updateAbsenceItem(input) {
+            const item = input.closest('.absence-item');
+            if (item) {
+                const value = parseFloat(input.value) || 0;
+                item.classList.toggle('has-value', value > 0);
+            }
+        }
+
+        // Dialog de confirmation personnalisé
+        function showConfirm(title, message) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'confirm-overlay';
+                overlay.innerHTML = `
+                    <div class="confirm-dialog">
+                        <h3>${title}</h3>
+                        <p>${message}</p>
+                        <div class="btn-group">
+                            <button class="btn btn-outline" id="confirmCancel">Annuler</button>
+                            <button class="btn btn-danger" id="confirmOk">Confirmer</button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+
+                // Focus sur le bouton annuler par défaut
+                overlay.querySelector('#confirmCancel').focus();
+
+                overlay.querySelector('#confirmCancel').onclick = () => {
+                    overlay.remove();
+                    resolve(false);
+                };
+
+                overlay.querySelector('#confirmOk').onclick = () => {
+                    overlay.remove();
+                    resolve(true);
+                };
+
+                // Fermer avec Escape
+                overlay.onkeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        overlay.remove();
+                        resolve(false);
+                    }
+                };
+
+                // Fermer en cliquant à l'extérieur
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                        resolve(false);
+                    }
+                };
+            });
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            document.getElementById('payPeriod').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            loadData();
+            updateCount();
+        });
+
+        function updateCount() {
+            const count = document.querySelectorAll('.employee-card').length;
+            document.getElementById('employeeCount').textContent = `(${count})`;
+        }
+
+        function addEmployee(name = "Nouveau salarié", data = null) {
+            employeeId++;
+            const id = employeeId;
+            const category = data?.category || 'ouvrier';
+            const tauxHoraire = data?.tauxHoraire || (category === 'etam' ? 17.62 : CONFIG.smic.horaire);
+
+            const card = document.createElement('div');
+            card.className = `employee-card ${category}`;
+            card.id = `employee-${id}`;
+            card.dataset.category = category;
+
+            card.innerHTML = `
+                <div class="employee-header">
+                    <div class="employee-info">
+                        <input type="checkbox" id="select-${id}" onchange="toggleSelect(${id})">
+                        <input type="text" value="${name}" placeholder="Nom et prénom" class="emp-name" oninput="this.classList.remove('error')">
+                        <div class="category-selector">
+                            <button type="button" class="category-btn ${category === 'ouvrier' ? 'active' : ''}" onclick="setCategory(${id}, 'ouvrier')">Ouvrier</button>
+                            <button type="button" class="category-btn ${category === 'etam' ? 'active etam' : ''}" onclick="setCategory(${id}, 'etam')">ETAM</button>
+                        </div>
+                        <div class="salary-input-group" id="salary-group-${id}" style="display:${category === 'etam' ? 'flex' : 'none'}">
+                            <label>Taux horaire</label>
+                            <input type="number" id="taux-horaire-${id}" value="${tauxHoraire}" step="0.01" min="11.88" oninput="updateSimulation(${id})">
+                            <span>€/h</span>
+                        </div>
+                    </div>
+                    <div class="simulation-box" id="sim-${id}">
+                        <div class="sim-item">
+                            <div class="sim-label" id="sim-base-label-${id}">${category === 'etam' ? 'Base ETAM' : 'Base SMIC'}</div>
+                            <div class="sim-value" id="sim-base-${id}">${category === 'etam' ? formatMoney(tauxHoraire * 151.67) : '1 801,84 €'}</div>
+                        </div>
+                        <div class="sim-divider"></div>
+                        <div class="sim-item">
+                            <div class="sim-label">+ Soumis</div>
+                            <div class="sim-value" id="sim-var-${id}">0,00 €</div>
+                        </div>
+                        <div class="sim-item" id="sim-ded-container-${id}" style="display:none;">
+                            <div class="sim-divider" style="margin-right:15px;"></div>
+                            <div>
+                                <div class="sim-label" style="color:#ef4444;">- Déductions</div>
+                                <div class="sim-value" id="sim-ded-${id}" style="color:#ef4444;font-size:1em;"></div>
+                            </div>
+                        </div>
+                        <div class="sim-divider"></div>
+                        <div class="sim-item">
+                            <div class="sim-label">= Brut</div>
+                            <div class="sim-value" id="sim-brut-${id}">${category === 'etam' ? formatMoney(tauxHoraire * 151.67) : '1 801,84 €'}</div>
+                        </div>
+                        <div class="sim-divider" id="sim-net-divider-${id}" style="display:${category === 'ouvrier' ? 'block' : 'none'}"></div>
+                        <div class="sim-item" id="sim-net-container-${id}" style="display:${category === 'ouvrier' ? 'block' : 'none'}">
+                            <div class="sim-label" style="color:#f59e0b;">+ Net exonéré</div>
+                            <div class="sim-value" id="sim-net-${id}" style="font-size:1em;"></div>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeEmployee(${id})">Supprimer</button>
+                </div>
+                <div class="employee-body">
+                    <!-- Temps de travail - Ouvrier only -->
+                    <div class="section-group section-ouvrier-only">
+                        <div class="section-label">Temps de travail <span class="info">SMIC ${CONFIG.smic.horaire}€/h</span></div>
+                        <div class="fields-grid">
+                            <div class="field field-with-unit">
+                                <label>Heures sup. 25%<br><span class="sublabel">${(CONFIG.smic.horaire * CONFIG.tauxHS.hs25).toFixed(2)}€/h</span></label>
+                                <input type="number" data-field="hs25" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
+                                <span class="unit">h</span>
+                            </div>
+                            <div class="field field-with-unit">
+                                <label>Heures sup. 50%<br><span class="sublabel">${(CONFIG.smic.horaire * CONFIG.tauxHS.hs50).toFixed(2)}€/h</span></label>
+                                <input type="number" data-field="hs50" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
+                                <span class="unit">h</span>
+                            </div>
+                            <div class="field field-with-unit">
+                                <label>Majoration nuit<br><span class="sublabel">+${(CONFIG.smic.horaire * CONFIG.majorationNuit).toFixed(2)}€/h (100%)</span></label>
+                                <input type="number" data-field="nuit" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
+                                <span class="unit">h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Absences - Common -->
+                    <div class="section-group">
+                        <div class="section-label">Absences & Congés <span class="info" id="absence-info-${id}">7h/j = ${(7 * CONFIG.smic.horaire).toFixed(2)}€</span></div>
+                        <div class="absences-grid">
+                            <div class="absence-item" id="absence-item-conges-${id}">
+                                <div class="absence-label">
+                                    <div class="name">Congés payés</div>
+                                    <div class="sublabel">CIBTP - à déduire</div>
+                                </div>
+                                <div class="absence-qty">
+                                    <input type="number" data-field="conges" placeholder="0" min="0" oninput="validateInput(this); updateSimulation(${id}); updateAbsenceItem(this);">
+                                    <span>j</span>
+                                </div>
+                                <div class="absence-dates">
+                                    <input type="text" data-dates="conges" placeholder="Dates: 15-16, 20/12" oninput="this.classList.toggle('has-value', this.value.length > 0); saveData();">
+                                </div>
+                            </div>
+                            <div class="absence-item" id="absence-item-absence-${id}">
+                                <div class="absence-label">
+                                    <div class="name">Absence injustifiée</div>
+                                    <div class="sublabel">à déduire</div>
+                                </div>
+                                <div class="absence-qty">
+                                    <input type="number" data-field="absence" placeholder="0" min="0" oninput="validateInput(this); updateSimulation(${id}); updateAbsenceItem(this);">
+                                    <span>j</span>
+                                </div>
+                                <div class="absence-dates">
+                                    <input type="text" data-dates="absence" placeholder="Dates: 5, 12-13/12" oninput="this.classList.toggle('has-value', this.value.length > 0); saveData();">
+                                </div>
+                            </div>
+                            <div class="absence-item" id="absence-item-sans_solde-${id}">
+                                <div class="absence-label">
+                                    <div class="name">Sans solde</div>
+                                    <div class="sublabel">à déduire</div>
+                                </div>
+                                <div class="absence-qty">
+                                    <input type="number" data-field="sans_solde" placeholder="0" min="0" oninput="validateInput(this); updateSimulation(${id}); updateAbsenceItem(this);">
+                                    <span>j</span>
+                                </div>
+                                <div class="absence-dates">
+                                    <input type="text" data-dates="sans_solde" placeholder="Dates: 1-3/12" oninput="this.classList.toggle('has-value', this.value.length > 0); saveData();">
+                                </div>
+                            </div>
+                            <div class="absence-item" id="absence-item-maladie-${id}">
+                                <div class="absence-label">
+                                    <div class="name">Arrêt maladie</div>
+                                    <div class="sublabel">à déduire</div>
+                                </div>
+                                <div class="absence-qty">
+                                    <input type="number" data-field="maladie" placeholder="0" min="0" oninput="validateInput(this); updateSimulation(${id}); updateAbsenceItem(this);">
+                                    <span>j</span>
+                                </div>
+                                <div class="absence-dates">
+                                    <input type="text" data-dates="maladie" placeholder="Dates: 8-12/12" oninput="this.classList.toggle('has-value', this.value.length > 0); saveData();">
+                                </div>
+                            </div>
+                            <div class="absence-item" id="absence-item-at-${id}">
+                                <div class="absence-label">
+                                    <div class="name">Accident travail</div>
+                                    <div class="sublabel neutral">déclaré CPAM</div>
+                                </div>
+                                <div class="absence-qty">
+                                    <input type="number" data-field="at" placeholder="0" min="0" oninput="validateInput(this); updateAbsenceItem(this);">
+                                    <span>j</span>
+                                </div>
+                                <div class="absence-dates">
+                                    <input type="text" data-dates="at" placeholder="Dates: 22-25/12" oninput="this.classList.toggle('has-value', this.value.length > 0); saveData();">
+                                </div>
+                            </div>
+                            <div class="absence-item" id="absence-item-repos_comp-${id}">
+                                <div class="absence-label">
+                                    <div class="name">Repos compensateur</div>
+                                    <div class="sublabel neutral">RC maintenu</div>
+                                </div>
+                                <div class="absence-qty">
+                                    <input type="number" data-field="repos_comp" placeholder="0" min="0" oninput="validateInput(this); updateAbsenceItem(this);">
+                                    <span>j</span>
+                                </div>
+                                <div class="absence-dates">
+                                    <input type="text" data-dates="repos_comp" placeholder="Dates: 30/12" oninput="this.classList.toggle('has-value', this.value.length > 0); saveData();">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Indemnités BTP - Ouvrier only -->
+                    <div class="section-group section-ouvrier-only">
+                        <div class="section-label">Indemnités BTP <span class="info">Occitanie 2025</span></div>
+                        <div class="fields-grid">
+                            <div class="field field-with-unit">
+                                <label>Indemnité repas<br><span class="sublabel">${CONFIG.indemnites.repas_total.toFixed(2)}€/j (${CONFIG.indemnites.repas_soumis}€ brut + ${CONFIG.indemnites.repas_exonere}€ net)</span></label>
+                                <input type="number" data-field="repas" placeholder="0" min="0" oninput="validateInput(this); updateSimulation(${id})">
+                                <span class="unit">j</span>
+                            </div>
+                            <div class="field field-with-unit">
+                                <label>Tickets resto<br><span class="sublabel">si applicable</span></label>
+                                <input type="number" data-field="tickets" placeholder="0" min="0" oninput="validateInput(this)">
+                                <span class="unit">nb</span>
+                            </div>
+                        </div>
+                        <div class="trajet-section">
+                            <div class="section-label" style="margin-top:12px;margin-bottom:8px;">Indemnités de trajet <span class="info">plusieurs zones possibles</span></div>
+                            <div class="trajet-rows" id="trajets-${id}"></div>
+                            <button class="btn-add-trajet" onclick="addTrajetRow(${id})">+ Ajouter une zone de trajet</button>
+                        </div>
+                    </div>
+
+                    <!-- Primes soumises - Common -->
+                    <div class="section-group">
+                        <div class="section-label">Primes soumises <span class="info">incluses dans le brut</span></div>
+                        <div class="primes-btp" id="primes-soumises-${id}">
+                            ${CONFIG.primesSoumises.map(p => `
+                                <div class="prime-item" id="prime-${id}-${p.id}">
+                                    <input type="checkbox" data-prime="${p.id}" data-soumis="true" onchange="togglePrime(${id}, '${p.id}')">
+                                    <div class="prime-info">
+                                        <div class="prime-name">${p.name}</div>
+                                        <div class="prime-rate">Montant libre</div>
+                                    </div>
+                                    <div class="prime-inputs">
+                                        <input type="number" data-prime-value="${p.id}" data-rate="0" data-soumis="true" placeholder="0" min="0" step="0.01" disabled oninput="validateInput(this); updateSimulation(${id})">
+                                        <span style="font-size:0.85em;color:#666;min-width:20px;">€</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Primes pénibilité - Ouvrier only -->
+                    <div class="section-group section-ouvrier-only">
+                        <div class="section-label">Primes de pénibilité <span class="info" style="color:#f59e0b;">exonérées - versées en net</span></div>
+                        <div class="primes-btp" id="primes-non-soumises-${id}">
+                            ${CONFIG.primesNonSoumises.map(p => `
+                                <div class="prime-item exonere" id="prime-${id}-${p.id}">
+                                    <input type="checkbox" data-prime="${p.id}" data-soumis="false" onchange="togglePrime(${id}, '${p.id}')">
+                                    <div class="prime-info">
+                                        <div class="prime-name">${p.name}</div>
+                                        <div class="prime-rate">${p.rate ? `${p.rate.toFixed(2)}€/jour` : 'Montant libre'}</div>
+                                    </div>
+                                    <div class="prime-inputs">
+                                        <input type="number" data-prime-value="${p.id}" data-rate="${p.rate || 0}" data-soumis="false" placeholder="0" min="0" step="0.01" disabled oninput="validateInput(this); updateSimulation(${id})">
+                                        <select class="prime-unit" data-prime-unit="${p.id}" disabled onchange="updateSimulation(${id})">
+                                            ${p.rate ? `<option value="jours">j</option>` : ''}
+                                            <option value="euros">€</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Déductions - Common -->
+                    <div class="section-group">
+                        <div class="section-label">Déductions</div>
+                        <div class="fields-grid">
+                            <div class="field field-with-unit">
+                                <label>Acompte versé</label>
+                                <input type="number" data-field="acompte" placeholder="0" min="0" step="50">
+                                <span class="unit">€</span>
+                            </div>
+                            <div class="field field-with-unit">
+                                <label>Avance sur salaire</label>
+                                <input type="number" data-field="avance" placeholder="0" min="0">
+                                <span class="unit">€</span>
+                            </div>
+                            <div class="field field-with-unit">
+                                <label>Autre retenue</label>
+                                <input type="number" data-field="retenue" placeholder="0" min="0">
+                                <span class="unit">€</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Éléments personnalisés - Common -->
+                    <div class="custom-section" id="custom-${id}">
+                        <div class="section-label">Éléments supplémentaires</div>
+                        <div class="custom-items"></div>
+                        <button class="btn-add-custom" onclick="addCustomField(${id})">+ Ajouter un élément</button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('employeesList').appendChild(card);
+
+            // Restaurer les données
+            if (data) {
+                Object.keys(data.fields || {}).forEach(key => {
+                    const input = card.querySelector(`[data-field="${key}"]`);
+                    if (input) {
+                        input.value = data.fields[key];
+                        // Appliquer le style visuel pour les absences
+                        const absenceItem = input.closest('.absence-item');
+                        if (absenceItem && parseFloat(input.value) > 0) {
+                            absenceItem.classList.add('has-value');
+                        }
+                    }
+                });
+
+                // Restaurer les dates d'absences
+                Object.keys(data.dates || {}).forEach(key => {
+                    const input = card.querySelector(`[data-dates="${key}"]`);
+                    if (input) {
+                        input.value = data.dates[key];
+                        input.classList.toggle('has-value', input.value.length > 0);
+                    }
+                });
+
+                // Restaurer les trajets
+                (data.trajets || []).forEach(t => {
+                    addTrajetRow(id, t.zone, t.jours);
+                });
+
+                // Restaurer les primes avec unité
+                Object.keys(data.primes || {}).forEach(key => {
+                    const checkbox = card.querySelector(`[data-prime="${key}"]`);
+                    const input = card.querySelector(`[data-prime-value="${key}"]`);
+                    const unitSelect = card.querySelector(`[data-prime-unit="${key}"]`);
+                    if (checkbox && input) {
+                        checkbox.checked = true;
+                        input.disabled = false;
+                        if (unitSelect) unitSelect.disabled = false;
+
+                        // Compatibilité ancienne version
+                        if (typeof data.primes[key] === 'object') {
+                            input.value = data.primes[key].value;
+                            if (unitSelect) unitSelect.value = data.primes[key].unit || 'euros';
+                        } else {
+                            input.value = data.primes[key];
+                        }
+                        card.querySelector(`#prime-${id}-${key}`).classList.add('active');
+                    }
+                });
+
+                (data.custom || []).forEach(item => {
+                    addCustomField(id, item.label, item.value);
+                });
+
+                updateSimulation(id);
+            } else {
+                // Nouvel employé ajouté manuellement
+                showToast('Nouveau salarié ajouté', 'success');
+            }
+
+            updateCount();
+            saveData();
+        }
+
+        function setCategory(empId, category) {
+            const card = document.getElementById(`employee-${empId}`);
+            if (!card) return;
+
+            // Update card class
+            card.classList.remove('ouvrier', 'etam');
+            card.classList.add(category);
+            card.dataset.category = category;
+
+            // Update buttons
+            card.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active', 'etam');
+            });
+            const activeBtn = card.querySelector(`.category-btn:${category === 'ouvrier' ? 'first-child' : 'last-child'}`);
+            activeBtn.classList.add('active');
+            if (category === 'etam') activeBtn.classList.add('etam');
+
+            // Show/hide salary input
+            const salaryGroup = document.getElementById(`salary-group-${empId}`);
+            salaryGroup.style.display = category === 'etam' ? 'flex' : 'none';
+
+            // Update base label
+            document.getElementById(`sim-base-label-${empId}`).textContent = category === 'etam' ? 'Base ETAM' : 'Base SMIC';
+
+            // Show/hide net exonéré for ouvrier only
+            document.getElementById(`sim-net-divider-${empId}`).style.display = category === 'ouvrier' ? 'block' : 'none';
+            document.getElementById(`sim-net-container-${empId}`).style.display = category === 'ouvrier' ? 'block' : 'none';
+
+            // Update simulation
+            updateSimulation(empId);
+            saveData();
+
+            showToast(`Catégorie changée en ${category === 'etam' ? 'ETAM' : 'Ouvrier'}`, 'info');
+        }
+
+        function togglePrime(empId, primeId) {
+            const card = document.getElementById(`employee-${empId}`);
+            const checkbox = card.querySelector(`[data-prime="${primeId}"]`);
+            const input = card.querySelector(`[data-prime-value="${primeId}"]`);
+            const unitSelect = card.querySelector(`[data-prime-unit="${primeId}"]`);
+            const item = card.querySelector(`#prime-${empId}-${primeId}`);
+
+            input.disabled = !checkbox.checked;
+            if (unitSelect) unitSelect.disabled = !checkbox.checked;
+            item.classList.toggle('active', checkbox.checked);
+
+            if (!checkbox.checked) {
+                input.value = '';
+            }
+
+            updateSimulation(empId);
+            saveData();
+        }
+
+        function addTrajetRow(empId, zone = '', jours = '') {
+            const container = document.getElementById(`trajets-${empId}`);
+            const row = document.createElement('div');
+            row.className = 'trajet-row';
+            row.innerHTML = `
+                <select class="trajet-zone" onchange="updateSimulation(${empId}); saveData();">
+                    <option value="">-- Sélectionner une zone --</option>
+                    <option value="0-5km" ${zone === '0-5km' ? 'selected' : ''}>0-5 km (0€)</option>
+                    <option value="zone1a" ${zone === 'zone1a' ? 'selected' : ''}>Zone 1a - 5-10km (2,06€)</option>
+                    <option value="zone1b" ${zone === 'zone1b' ? 'selected' : ''}>Zone 1b - 10-20km (2,58€)</option>
+                    <option value="zone2" ${zone === 'zone2' ? 'selected' : ''}>Zone 2 - 20-30km (3,87€)</option>
+                    <option value="zone3" ${zone === 'zone3' ? 'selected' : ''}>Zone 3 - 30-40km (5,16€)</option>
+                    <option value="zone4" ${zone === 'zone4' ? 'selected' : ''}>Zone 4 - 40-50km (6,45€)</option>
+                    <option value="zone5" ${zone === 'zone5' ? 'selected' : ''}>Zone 5 - +50km (7,74€)</option>
+                </select>
+                <input type="number" class="trajet-jours" placeholder="Nb jours" min="0" value="${jours}" oninput="validateInput(this); updateSimulation(${empId}); saveData();">
+                <button class="btn-remove" onclick="this.parentElement.remove(); updateSimulation(${empId}); saveData();">×</button>
+            `;
+            container.appendChild(row);
+            updateSimulation(empId);
+            saveData();
+        }
+
+        function updateSimulation(empId) {
+            const card = document.getElementById(`employee-${empId}`);
+            if (!card) return;
+
+            const category = card.dataset.category || 'ouvrier';
+            const isETAM = category === 'etam';
+
+            // Taux horaire selon catégorie
+            let tauxHoraire = CONFIG.smic.horaire;
+            let salaireMensuel = CONFIG.smic.mensuel;
+
+            if (isETAM) {
+                tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || 17.62;
+                salaireMensuel = tauxHoraire * 151.67;
+            }
+
+            let brutVariable = 0;  // Éléments soumis (dans le brut)
+            let netVariable = 0;   // Éléments exonérés (versés en net)
+            let deductions = 0;    // Déductions pour absences
+
+            // Valeur d'une journée (7h × taux horaire)
+            const valeurJour = 7 * tauxHoraire;
+
+            // Update absence info
+            const absenceInfo = document.getElementById(`absence-info-${empId}`);
+            if (absenceInfo) {
+                absenceInfo.textContent = `7h/j = ${valeurJour.toFixed(2)}€`;
+            }
+
+            // Absences à déduire
+            const conges = parseFloat(card.querySelector('[data-field="conges"]')?.value) || 0;
+            const absenceInj = parseFloat(card.querySelector('[data-field="absence"]')?.value) || 0;
+            const sansSolde = parseFloat(card.querySelector('[data-field="sans_solde"]')?.value) || 0;
+            const maladie = parseFloat(card.querySelector('[data-field="maladie"]')?.value) || 0;
+
+            // Congés payés déduits (gérés par CIBTP)
+            deductions += conges * valeurJour;
+            deductions += absenceInj * valeurJour;
+            deductions += sansSolde * valeurJour;
+            deductions += maladie * valeurJour;
+
+            // Heures sup (ouvrier seulement)
+            if (!isETAM) {
+                const hs25 = parseFloat(card.querySelector('[data-field="hs25"]')?.value) || 0;
+                const hs50 = parseFloat(card.querySelector('[data-field="hs50"]')?.value) || 0;
+                const nuit = parseFloat(card.querySelector('[data-field="nuit"]')?.value) || 0;
+
+                brutVariable += hs25 * (CONFIG.smic.horaire * CONFIG.tauxHS.hs25);
+                brutVariable += hs50 * (CONFIG.smic.horaire * CONFIG.tauxHS.hs50);
+                brutVariable += nuit * (CONFIG.smic.horaire * CONFIG.majorationNuit);
+
+                // Indemnités repas : partie soumise dans brut, partie exonérée en net
+                const repas = parseFloat(card.querySelector('[data-field="repas"]')?.value) || 0;
+                brutVariable += repas * CONFIG.indemnites.repas_soumis;
+                netVariable += repas * CONFIG.indemnites.repas_exonere;
+
+                // Indemnités trajet (soumises - dans le brut selon tes bulletins)
+                card.querySelectorAll('.trajet-row').forEach(row => {
+                    const zone = row.querySelector('.trajet-zone')?.value;
+                    const jours = parseFloat(row.querySelector('.trajet-jours')?.value) || 0;
+                    if (zone && CONFIG.indemnites.trajet[zone] && jours > 0) {
+                        brutVariable += jours * CONFIG.indemnites.trajet[zone];
+                    }
+                });
+            }
+
+            // Primes cochées (primes soumises pour tous, pénibilité seulement ouvrier)
+            card.querySelectorAll('[data-prime-value]').forEach(input => {
+                if (!input.disabled && input.value) {
+                    const primeId = input.dataset.primeValue;
+                    const isSoumis = input.dataset.soumis === 'true';
+
+                    // Skip primes non-soumises for ETAM
+                    if (isETAM && !isSoumis) return;
+
+                    const val = parseFloat(input.value) || 0;
+                    const unitSelect = card.querySelector(`[data-prime-unit="${primeId}"]`);
+                    const unit = unitSelect?.value || 'euros';
+                    const rate = parseFloat(input.dataset.rate) || 0;
+
+                    let montant = val;
+                    if (unit === 'jours' && rate > 0) {
+                        montant = val * rate;
+                    }
+
+                    if (isSoumis) {
+                        brutVariable += montant;
+                    } else {
+                        netVariable += montant;
+                    }
+                }
+            });
+
+            // Affichage - utiliser le bon salaire de base
+            const brutTotal = salaireMensuel + brutVariable - deductions;
+
+            // Update base display for ETAM
+            const baseDisplay = document.getElementById(`sim-base-${empId}`);
+            if (baseDisplay) {
+                baseDisplay.textContent = formatMoney(salaireMensuel);
+            }
+
+            document.getElementById(`sim-var-${empId}`).textContent = formatMoney(brutVariable);
+            document.getElementById(`sim-brut-${empId}`).textContent = formatMoney(brutTotal);
+
+            // Afficher les déductions
+            const dedContainer = document.getElementById(`sim-ded-container-${empId}`);
+            const dedDisplay = document.getElementById(`sim-ded-${empId}`);
+            if (dedContainer && dedDisplay) {
+                if (deductions > 0) {
+                    dedContainer.style.display = 'flex';
+                    dedDisplay.textContent = formatMoney(deductions);
+                } else {
+                    dedContainer.style.display = 'none';
+                    dedDisplay.textContent = '';
+                }
+            }
+
+            // Mettre à jour l'affichage des primes exonérées si présentes
+            const netDisplay = document.getElementById(`sim-net-${empId}`);
+            if (netDisplay) {
+                netDisplay.textContent = netVariable > 0 ? `+ ${formatMoney(netVariable)}` : '';
+            }
+
+            saveData();
+        }
+
+        function formatMoney(val) {
+            return val.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+        }
+
+        async function removeEmployee(id) {
+            const card = document.getElementById(`employee-${id}`);
+            if (!card) return;
+
+            const name = card.querySelector('.emp-name')?.value || 'ce salarié';
+            const confirmed = await showConfirm(
+                'Supprimer le salarié',
+                `Voulez-vous vraiment supprimer "${name}" ? Cette action est irréversible.`
+            );
+
+            if (confirmed) {
+                card.remove();
+                updateCount();
+                saveData();
+                showToast(`${name} a été supprimé`, 'success');
+            }
+        }
+
+        function toggleSelect(id) {
+            const card = document.getElementById(`employee-${id}`);
+            const cb = document.getElementById(`select-${id}`);
+            card.classList.toggle('selected', cb.checked);
+        }
+
+        function selectAll() {
+            const cards = document.querySelectorAll('.employee-card');
+            if (cards.length === 0) {
+                showToast('Aucun salarié à sélectionner', 'info');
+                return;
+            }
+            cards.forEach(card => {
+                const cb = card.querySelector('input[type="checkbox"]');
+                cb.checked = true;
+                card.classList.add('selected');
+            });
+            showToast(`${cards.length} salarié(s) sélectionné(s)`, 'info');
+        }
+
+        async function deleteSelected() {
+            const selected = document.querySelectorAll('.employee-card.selected');
+            if (!selected.length) {
+                showToast('Aucun salarié sélectionné', 'warning');
+                return;
+            }
+
+            const confirmed = await showConfirm(
+                'Supprimer la sélection',
+                `Voulez-vous vraiment supprimer ${selected.length} salarié(s) ? Cette action est irréversible.`
+            );
+
+            if (confirmed) {
+                selected.forEach(card => card.remove());
+                updateCount();
+                saveData();
+                showToast(`${selected.length} salarié(s) supprimé(s)`, 'success');
+            }
+        }
+
+        function addCustomField(empId, label = '', value = '') {
+            const container = document.querySelector(`#custom-${empId} .custom-items`);
+            const row = document.createElement('div');
+            row.className = 'custom-row';
+            row.innerHTML = `
+                <input type="text" placeholder="Libellé" class="custom-label" value="${label}">
+                <input type="text" placeholder="Valeur" class="custom-value" value="${value}">
+                <button class="btn-remove" onclick="this.parentElement.remove(); saveData();">×</button>
+            `;
+            container.appendChild(row);
+            saveData();
+        }
+
+        function saveData() {
+            const data = {
+                period: document.getElementById('payPeriod').value,
+                notes: document.getElementById('notes').value,
+                employees: []
+            };
+
+            document.querySelectorAll('.employee-card').forEach(card => {
+                const empId = card.id.split('-')[1];
+                const category = card.dataset.category || 'ouvrier';
+                const tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || 17.62;
+
+                const emp = {
+                    name: card.querySelector('.emp-name').value,
+                    category: category,
+                    tauxHoraire: category === 'etam' ? tauxHoraire : null,
+                    fields: {},
+                    dates: {},
+                    primes: {},
+                    trajets: [],
+                    custom: []
+                };
+
+                card.querySelectorAll('[data-field]').forEach(input => {
+                    if (input.value) emp.fields[input.dataset.field] = input.value;
+                });
+
+                // Sauvegarder les dates d'absences
+                card.querySelectorAll('[data-dates]').forEach(input => {
+                    if (input.value) emp.dates[input.dataset.dates] = input.value;
+                });
+
+                // Trajets multiples
+                card.querySelectorAll('.trajet-row').forEach(row => {
+                    const zone = row.querySelector('.trajet-zone')?.value;
+                    const jours = row.querySelector('.trajet-jours')?.value;
+                    if (zone || jours) emp.trajets.push({ zone, jours });
+                });
+
+                // Primes avec unité
+                card.querySelectorAll('[data-prime]').forEach(cb => {
+                    if (cb.checked) {
+                        const primeId = cb.dataset.prime;
+                        const input = card.querySelector(`[data-prime-value="${primeId}"]`);
+                        const unitSelect = card.querySelector(`[data-prime-unit="${primeId}"]`);
+                        if (input?.value) {
+                            emp.primes[primeId] = {
+                                value: input.value,
+                                unit: unitSelect?.value || 'euros'
+                            };
+                        }
+                    }
+                });
+
+                card.querySelectorAll('.custom-row').forEach(row => {
+                    const label = row.querySelector('.custom-label').value;
+                    const value = row.querySelector('.custom-value').value;
+                    if (label || value) emp.custom.push({ label, value });
+                });
+
+                data.employees.push(emp);
+            });
+
+            localStorage.setItem('proforsciage_paie_v5', JSON.stringify(data));
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('proforsciage_paie_v5') || localStorage.getItem('proforsciage_paie_v4') || localStorage.getItem('proforsciage_paie_v3');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.period) document.getElementById('payPeriod').value = data.period;
+                document.getElementById('notes').value = data.notes || '';
+
+                if (data.employees?.length) {
+                    data.employees.forEach(emp => addEmployee(emp.name, emp));
+                }
+            }
+        }
+
+        function previewPDF() {
+            generatePDF(true);
+        }
+
+        function generatePDF(previewMode = false) {
+            // Vérifications préliminaires
+            const employees = document.querySelectorAll('.employee-card');
+            if (employees.length === 0) {
+                showToast('Ajoutez au moins un salarié avant de générer le PDF', 'warning');
+                return;
+            }
+
+            const period = document.getElementById('payPeriod').value;
+            if (!period) {
+                showToast('Veuillez sélectionner une période de paie', 'warning');
+                document.getElementById('payPeriod').focus();
+                return;
+            }
+
+            // Vérifier les noms vides
+            let hasEmptyName = false;
+            employees.forEach(card => {
+                const name = card.querySelector('.emp-name')?.value?.trim();
+                if (!name || name === 'Nouveau salarié') {
+                    hasEmptyName = true;
+                    card.querySelector('.emp-name')?.classList.add('error');
+                }
+            });
+
+            if (hasEmptyName) {
+                showToast('Veuillez renseigner le nom de tous les salariés', 'warning');
+                return;
+            }
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const notes = document.getElementById('notes').value;
+                const pageWidth = 210;
+                const pageHeight = 297;
+                const margin = 12;
+                const contentWidth = pageWidth - (margin * 2);
+
+                let periodText = '';
+                let periodShort = '';
+                if (period) {
+                    const [year, month] = period.split('-');
+                    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                                  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+                    periodText = `${months[parseInt(month) - 1]} ${year}`;
+                    periodShort = `${month}-${year}`;
+                }
+
+                // En-tête compact
+                function drawHeader() {
+                    // Ligne supérieure colorée
+                    doc.setFillColor(26, 26, 46);
+                    doc.rect(0, 0, pageWidth, 18, 'F');
+
+                    // Logo et titre
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('PROFORSCIAGE', margin, 8);
+
+                    doc.setFontSize(7);
+                    doc.setFont(undefined, 'normal');
+                    doc.setTextColor(180, 180, 200);
+                    doc.text('101 Ch. des Pêchers, 34130 Mauguio | SIRET: 84763804600049', margin, 14);
+
+                    // Badge période
+                    doc.setFillColor(102, 126, 234);
+                    doc.roundedRect(pageWidth - margin - 45, 4, 45, 10, 2, 2, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(8);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(periodText, pageWidth - margin - 22.5, 10.5, { align: 'center' });
+                }
+
+                // Ligne compacte
+                function drawLine(y, label, qty, rate, amount, isDeduction = false, isExonere = false) {
+                    const h = 5.5;
+                    doc.setFontSize(7);
+                    doc.setFont(undefined, 'normal');
+
+                    if (isDeduction) {
+                        doc.setTextColor(180, 50, 50);
+                    } else if (isExonere) {
+                        doc.setTextColor(180, 120, 50);
+                    } else {
+                        doc.setTextColor(50, 50, 50);
+                    }
+
+                    doc.text(label, margin + 2, y + 4);
+                    doc.text(qty, margin + 95, y + 4, { align: 'right' });
+                    doc.text(rate, margin + 130, y + 4, { align: 'right' });
+                    doc.setFont(undefined, 'bold');
+                    doc.text(amount, margin + contentWidth - 2, y + 4, { align: 'right' });
+
+                    return y + h;
+                }
+
+                // Titre de section compact
+                function drawSectionHeader(y, title, color = [102, 126, 234]) {
+                    doc.setFillColor(...color);
+                    doc.rect(margin, y, contentWidth, 5, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(7);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(title.toUpperCase(), margin + 2, y + 3.8);
+                    return y + 5;
+                }
+
+                // En-têtes colonnes
+                function drawColumnHeaders(y) {
+                    doc.setFillColor(245, 245, 248);
+                    doc.rect(margin, y, contentWidth, 5, 'F');
+                    doc.setDrawColor(220, 220, 225);
+                    doc.line(margin, y + 5, margin + contentWidth, y + 5);
+
+                    doc.setFontSize(6);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(100, 100, 110);
+                    doc.text('LIBELLÉ', margin + 2, y + 3.5);
+                    doc.text('QTÉ', margin + 95, y + 3.5, { align: 'right' });
+                    doc.text('TAUX', margin + 130, y + 3.5, { align: 'right' });
+                    doc.text('MONTANT', margin + contentWidth - 2, y + 3.5, { align: 'right' });
+                    return y + 5;
+                }
+
+                drawHeader();
+                let y = 24;
+
+                // Collecter les données de tous les salariés
+                const allEmployeesData = [];
+
+                document.querySelectorAll('.employee-card').forEach((card) => {
+                    const empId = card.id.split('-')[1];
+                    const name = card.querySelector('.emp-name').value;
+                    const brutEstime = document.getElementById(`sim-brut-${empId}`).textContent;
+                    const category = card.dataset.category || 'ouvrier';
+                    const isETAM = category === 'etam';
+
+                    // Taux horaire selon catégorie
+                    let tauxHoraire = CONFIG.smic.horaire;
+                    if (isETAM) {
+                        tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || 17.62;
+                    }
+
+                    // Récupérer toutes les données
+                    const conges = parseFloat(card.querySelector('[data-field="conges"]')?.value) || 0;
+                    const absence = parseFloat(card.querySelector('[data-field="absence"]')?.value) || 0;
+                    const sansSolde = parseFloat(card.querySelector('[data-field="sans_solde"]')?.value) || 0;
+                    const maladie = parseFloat(card.querySelector('[data-field="maladie"]')?.value) || 0;
+                    const at = parseFloat(card.querySelector('[data-field="at"]')?.value) || 0;
+                    const reposComp = parseFloat(card.querySelector('[data-field="repos_comp"]')?.value) || 0;
+                    const acompte = parseFloat(card.querySelector('[data-field="acompte"]')?.value) || 0;
+                    const avance = parseFloat(card.querySelector('[data-field="avance"]')?.value) || 0;
+                    const retenue = parseFloat(card.querySelector('[data-field="retenue"]')?.value) || 0;
+
+                    // Récupérer les dates d'absences
+                    const datesConges = card.querySelector('[data-dates="conges"]')?.value || '';
+                    const datesAbsence = card.querySelector('[data-dates="absence"]')?.value || '';
+                    const datesSansSolde = card.querySelector('[data-dates="sans_solde"]')?.value || '';
+                    const datesMaladie = card.querySelector('[data-dates="maladie"]')?.value || '';
+                    const datesAt = card.querySelector('[data-dates="at"]')?.value || '';
+                    const datesReposComp = card.querySelector('[data-dates="repos_comp"]')?.value || '';
+
+                    const valeurJour = 7 * tauxHoraire;
+                    let totalDeductions = (conges + absence + sansSolde + maladie) * valeurJour;
+
+                    const lines = [];
+
+                    // Heures sup (ouvrier seulement)
+                    if (!isETAM) {
+                        const hs25 = parseFloat(card.querySelector('[data-field="hs25"]')?.value) || 0;
+                        const hs50 = parseFloat(card.querySelector('[data-field="hs50"]')?.value) || 0;
+                        const nuit = parseFloat(card.querySelector('[data-field="nuit"]')?.value) || 0;
+
+                        if (hs25 > 0) lines.push({ label: 'Heures sup. 25%', qty: `${hs25}h`, rate: `${(CONFIG.smic.horaire * 1.25).toFixed(2)}€`, amount: `${(hs25 * CONFIG.smic.horaire * 1.25).toFixed(2)} €` });
+                        if (hs50 > 0) lines.push({ label: 'Heures sup. 50%', qty: `${hs50}h`, rate: `${(CONFIG.smic.horaire * 1.50).toFixed(2)}€`, amount: `${(hs50 * CONFIG.smic.horaire * 1.50).toFixed(2)} €` });
+                        if (nuit > 0) lines.push({ label: 'Majoration nuit 100%', qty: `${nuit}h`, rate: `${CONFIG.smic.horaire.toFixed(2)}€`, amount: `${(nuit * CONFIG.smic.horaire).toFixed(2)} €` });
+                    }
+
+                    // Absences & Congés (avec dates si renseignées)
+                    if (conges > 0) lines.push({ label: `Congés payés (CIBTP)${datesConges ? ' : ' + datesConges : ''}`, qty: `${conges}j`, rate: `${valeurJour.toFixed(2)}€`, amount: `-${(conges * valeurJour).toFixed(2)} €`, isDeduction: true });
+                    if (absence > 0) lines.push({ label: `Absence injustifiée${datesAbsence ? ' : ' + datesAbsence : ''}`, qty: `${absence}j`, rate: `${valeurJour.toFixed(2)}€`, amount: `-${(absence * valeurJour).toFixed(2)} €`, isDeduction: true });
+                    if (sansSolde > 0) lines.push({ label: `Sans solde${datesSansSolde ? ' : ' + datesSansSolde : ''}`, qty: `${sansSolde}j`, rate: `${valeurJour.toFixed(2)}€`, amount: `-${(sansSolde * valeurJour).toFixed(2)} €`, isDeduction: true });
+                    if (maladie > 0) lines.push({ label: `Arrêt maladie${datesMaladie ? ' : ' + datesMaladie : ''}`, qty: `${maladie}j`, rate: `${valeurJour.toFixed(2)}€`, amount: `-${(maladie * valeurJour).toFixed(2)} €`, isDeduction: true });
+                    if (at > 0) lines.push({ label: `Accident travail${datesAt ? ' : ' + datesAt : ''}`, qty: `${at}j`, rate: '-', amount: 'CPAM' });
+                    if (reposComp > 0) lines.push({ label: `Repos compensateur${datesReposComp ? ' : ' + datesReposComp : ''}`, qty: `${reposComp}j`, rate: '-', amount: 'Maintenu' });
+
+                    // Indemnités BTP (ouvrier seulement)
+                    if (!isETAM) {
+                        const repas = parseFloat(card.querySelector('[data-field="repas"]')?.value) || 0;
+                        const tickets = parseFloat(card.querySelector('[data-field="tickets"]')?.value) || 0;
+
+                        if (repas > 0) {
+                            lines.push({ label: 'Indemnité repas (soumis)', qty: `${repas}j`, rate: `${CONFIG.indemnites.repas_soumis.toFixed(2)}€`, amount: `${(repas * CONFIG.indemnites.repas_soumis).toFixed(2)} €` });
+                            lines.push({ label: 'Indemnité repas (exonéré)', qty: `${repas}j`, rate: `${CONFIG.indemnites.repas_exonere.toFixed(2)}€`, amount: `${(repas * CONFIG.indemnites.repas_exonere).toFixed(2)} €`, isExonere: true });
+                        }
+
+                        // Trajets
+                        card.querySelectorAll('.trajet-row').forEach(row => {
+                            const zone = row.querySelector('.trajet-zone')?.value;
+                            const jours = parseFloat(row.querySelector('.trajet-jours')?.value) || 0;
+                            if (zone && jours > 0) {
+                                const taux = CONFIG.indemnites.trajet[zone] || 0;
+                                const zoneLabel = zone.replace('zone', 'Z').replace('0-5km', '0-5km');
+                                lines.push({ label: `Trajet ${zoneLabel}`, qty: `${jours}j`, rate: `${taux.toFixed(2)}€`, amount: `${(jours * taux).toFixed(2)} €` });
+                            }
+                        });
+
+                        if (tickets > 0) lines.push({ label: 'Tickets restaurant', qty: `${tickets}`, rate: '-', amount: '-' });
+                    }
+
+                    // Primes (soumises pour tous, pénibilité seulement ouvrier)
+                    const allPrimes = [...CONFIG.primesSoumises, ...CONFIG.primesNonSoumises];
+                    card.querySelectorAll('[data-prime]').forEach(cb => {
+                        if (cb.checked) {
+                            const primeId = cb.dataset.prime;
+                            const isSoumis = cb.dataset.soumis === 'true';
+
+                            // Skip primes non-soumises for ETAM
+                            if (isETAM && !isSoumis) return;
+
+                            const input = card.querySelector(`[data-prime-value="${primeId}"]`);
+                            const unitSelect = card.querySelector(`[data-prime-unit="${primeId}"]`);
+                            if (input?.value) {
+                                const prime = allPrimes.find(p => p.id === primeId);
+                                const val = parseFloat(input.value) || 0;
+                                const unit = unitSelect?.value || 'euros';
+                                const rate = parseFloat(input.dataset.rate) || 0;
+
+                                let montant = val;
+                                let qtyStr = '-';
+                                let rateStr = '-';
+
+                                if (unit === 'jours' && rate > 0) {
+                                    montant = val * rate;
+                                    qtyStr = `${val}j`;
+                                    rateStr = `${rate.toFixed(2)}€`;
+                                } else {
+                                    rateStr = '-';
+                                }
+
+                                lines.push({
+                                    label: prime?.name || primeId,
+                                    qty: qtyStr,
+                                    rate: rateStr,
+                                    amount: `${montant.toFixed(2)} €`,
+                                    isExonere: !isSoumis
+                                });
+                            }
+                        }
+                    });
+
+                    // Déductions
+                    if (acompte > 0) lines.push({ label: 'Acompte versé', qty: '-', rate: '-', amount: `-${acompte.toFixed(2)} €`, isDeduction: true });
+                    if (avance > 0) lines.push({ label: 'Avance salaire', qty: '-', rate: '-', amount: `-${avance.toFixed(2)} €`, isDeduction: true });
+                    if (retenue > 0) lines.push({ label: 'Autre retenue', qty: '-', rate: '-', amount: `-${retenue.toFixed(2)} €`, isDeduction: true });
+
+                    // Éléments personnalisés
+                    card.querySelectorAll('.custom-row').forEach(row => {
+                        const label = row.querySelector('.custom-label').value;
+                        const value = row.querySelector('.custom-value').value;
+                        if (label && value) lines.push({ label, qty: '-', rate: '-', amount: value });
+                    });
+
+                    allEmployeesData.push({ name, brutEstime, lines, totalDeductions, category, tauxHoraire });
+                });
+
+                // Dessiner chaque salarié
+                allEmployeesData.forEach((emp, idx) => {
+                    const isETAM = emp.category === 'etam';
+
+                    // Vérifier si nouvelle page nécessaire (estimer la hauteur)
+                    const estimatedHeight = 20 + (emp.lines.length * 5.5) + 15;
+                    if (y + estimatedHeight > 270) {
+                        doc.addPage();
+                        drawHeader();
+                        y = 24;
+                    }
+
+                    // En-tête salarié compact
+                    doc.setFillColor(isETAM ? 124 : 26, isETAM ? 58 : 26, isETAM ? 237 : 46);
+                    doc.roundedRect(margin, y, contentWidth, 8, 1, 1, 'F');
+
+                    // Badge catégorie (ETAM ou Ouvrier)
+                    doc.setFillColor(255, 255, 255, 0.2);
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(5);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(isETAM ? 'ETAM' : 'OUVRIER', margin + 3, y + 3);
+
+                    // Nom (adaptatif)
+                    let fontSize = 9;
+                    const nameUpper = emp.name.toUpperCase();
+                    doc.setFontSize(fontSize);
+                    while (doc.getTextWidth(nameUpper) > 85 && fontSize > 6) {
+                        fontSize -= 0.5;
+                        doc.setFontSize(fontSize);
+                    }
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(nameUpper, margin + 25, y + 5.5);
+
+                    // Badge brut
+                    doc.setFillColor(16, 185, 129);
+                    doc.roundedRect(margin + contentWidth - 48, y + 1.5, 45, 5, 1, 1, 'F');
+                    doc.setFontSize(7);
+                    doc.text(`BRUT: ${emp.brutEstime}`, margin + contentWidth - 25.5, y + 5, { align: 'center' });
+
+                    y += 10;
+
+                    // Colonnes headers si lignes présentes
+                    if (emp.lines.length > 0) {
+                        y = drawColumnHeaders(y);
+
+                        // Alterner les couleurs de fond
+                        emp.lines.forEach((line, lineIdx) => {
+                            if (lineIdx % 2 === 0) {
+                                doc.setFillColor(250, 250, 252);
+                                doc.rect(margin, y, contentWidth, 5.5, 'F');
+                            }
+                            y = drawLine(y, line.label, line.qty, line.rate, line.amount, line.isDeduction, line.isExonere);
+                        });
+
+                        // Ligne de séparation finale
+                        doc.setDrawColor(220, 220, 225);
+                        doc.line(margin, y, margin + contentWidth, y);
+                    } else {
+                        // Si pas d'éléments variables
+                        doc.setFontSize(7);
+                        doc.setTextColor(150, 150, 150);
+                        doc.setFont(undefined, 'italic');
+                        doc.text('Aucun élément variable ce mois', margin + contentWidth / 2, y + 3, { align: 'center' });
+                        y += 6;
+                    }
+
+                    y += 5;
+
+                    // Séparateur entre salariés
+                    if (idx < allEmployeesData.length - 1) {
+                        doc.setDrawColor(200, 200, 210);
+                        doc.setLineDashPattern([1, 1], 0);
+                        doc.line(margin + 20, y, margin + contentWidth - 20, y);
+                        doc.setLineDashPattern([], 0);
+                        y += 5;
+                    }
+                });
+
+                // Notes si présentes
+                if (notes && notes.trim()) {
+                    if (y + 20 > 275) {
+                        doc.addPage();
+                        drawHeader();
+                        y = 24;
+                    }
+
+                    y += 3;
+                    doc.setFillColor(255, 250, 240);
+                    doc.setDrawColor(230, 180, 100);
+
+                    const splitNotes = doc.splitTextToSize(notes, contentWidth - 8);
+                    const notesHeight = Math.min(splitNotes.length * 4 + 8, 30);
+
+                    doc.roundedRect(margin, y, contentWidth, notesHeight, 1, 1, 'FD');
+
+                    doc.setFontSize(6);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(180, 130, 50);
+                    doc.text('NOTES', margin + 3, y + 4);
+
+                    doc.setFont(undefined, 'normal');
+                    doc.setFontSize(7);
+                    doc.setTextColor(100, 80, 50);
+                    doc.text(splitNotes.slice(0, 5), margin + 3, y + 9);
+                }
+
+                // Pied de page sur toutes les pages
+                const pages = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pages; i++) {
+                    doc.setPage(i);
+
+                    doc.setDrawColor(220, 220, 225);
+                    doc.line(margin, 285, margin + contentWidth, 285);
+
+                    doc.setFontSize(6);
+                    doc.setTextColor(150, 150, 160);
+                    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, margin, 290);
+                    doc.text('PROFORSCIAGE - Éléments de paie', pageWidth / 2, 290, { align: 'center' });
+                    doc.text(`${i}/${pages}`, margin + contentWidth, 290, { align: 'right' });
+                }
+
+                if (previewMode) {
+                    // Ouvrir l'aperçu dans une modale
+                    const pdfBlob = doc.output('blob');
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+
+                    const modal = document.createElement('div');
+                    modal.className = 'preview-modal';
+                    modal.innerHTML = `
+                        <div class="preview-header">
+                            <h3>Aperçu - ${periodText}</h3>
+                            <div class="preview-actions">
+                                <button class="btn" style="background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4);color:white;" onclick="this.closest('.preview-modal').remove();">Fermer</button>
+                                <button class="btn btn-success" onclick="downloadFromPreview()">Télécharger</button>
+                            </div>
+                        </div>
+                        <div class="preview-body">
+                            <iframe src="${pdfUrl}#toolbar=0"></iframe>
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+
+                    // Stocker le doc pour le téléchargement
+                    window.currentPdfDoc = doc;
+                    window.currentPdfName = `Proforsciage_Paie_${periodShort}.pdf`;
+
+                    // Fermer avec Escape
+                    const handleEscape = (e) => {
+                        if (e.key === 'Escape') {
+                            modal.remove();
+                            document.removeEventListener('keydown', handleEscape);
+                        }
+                    };
+                    document.addEventListener('keydown', handleEscape);
+
+                    showToast('Aperçu généré', 'info');
+                } else {
+                    doc.save(`Proforsciage_Paie_${periodShort}.pdf`);
+                    showToast(`PDF généré (${allEmployeesData.length} salarié${allEmployeesData.length > 1 ? 's' : ''})`, 'success');
+                }
+
+            } catch (error) {
+                console.error('Erreur génération PDF:', error);
+                showToast('Erreur lors de la génération du PDF', 'error');
+            }
+        }
+
+        function downloadFromPreview() {
+            if (window.currentPdfDoc && window.currentPdfName) {
+                window.currentPdfDoc.save(window.currentPdfName);
+                showToast('PDF téléchargé', 'success');
+            }
+        }
+
+        document.addEventListener('input', saveData);
+
+        // ========== PWA - Service Worker & Installation ==========
+
+        // Enregistrer le Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker enregistré:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Erreur Service Worker:', error);
+                    });
+            });
+        }
+
+        // Gestion de l'installation PWA
+        let deferredPrompt;
+        const installBanner = document.getElementById('installBanner');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('dismissInstall');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Afficher la bannière d'installation
+            if (installBanner) {
+                installBanner.style.display = 'flex';
+            }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        showToast('Application installée !', 'success');
+                    }
+                    deferredPrompt = null;
+                    installBanner.style.display = 'none';
+                }
+            });
+        }
+
+        if (dismissBtn) {
+            dismissBtn.addEventListener('click', () => {
+                installBanner.style.display = 'none';
+            });
+        }
+
+        // Détecter si l'app est déjà installée
+        window.addEventListener('appinstalled', () => {
+            showToast('Proforsciage installé sur votre appareil', 'success');
+            if (installBanner) installBanner.style.display = 'none';
+            deferredPrompt = null;
+        });
+    </script>
+</body>
+</html>
