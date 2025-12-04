@@ -978,6 +978,9 @@
         let employeeId = 0;
         let firebaseReady = false;
         let isLoadingFromCloud = false;
+        let isSavingToCloud = false;
+        let lastSaveTimestamp = 0;
+        let saveDebounceTimer = null;
 
 const firebaseConfig = {
   apiKey: "AIzaSyDJNPE21arpM6QkETx486Ha7MziMkkcldw",
@@ -998,7 +1001,19 @@ const firebaseConfig = {
             // Écouter les changements en temps réel
             dataRef.on('value', (snapshot) => {
                 const cloudData = snapshot.val();
-                if (cloudData && !isLoadingFromCloud) {
+                // Ignorer si c'est notre propre sauvegarde ou si on est déjà en train de charger
+                if (cloudData && !isLoadingFromCloud && !isSavingToCloud) {
+                    // Vérifier si un champ est actuellement focus (utilisateur en train de taper)
+                    const activeElement = document.activeElement;
+                    const isUserTyping = activeElement &&
+                        (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'SELECT');
+
+                    if (isUserTyping) {
+                        // Ne pas recharger si l'utilisateur tape - juste mettre à jour le statut
+                        updateSyncStatus('connected', 'Synchronisé');
+                        return;
+                    }
+
                     isLoadingFromCloud = true;
                     loadFromCloud(cloudData);
                     updateSyncStatus('connected', 'Synchronisé');
@@ -1032,17 +1047,28 @@ const firebaseConfig = {
         function saveToCloud() {
             if (!firebaseReady || isLoadingFromCloud) return;
 
+            // Debounce - attendre 800ms après la dernière frappe
+            if (saveDebounceTimer) {
+                clearTimeout(saveDebounceTimer);
+            }
+
             updateSyncStatus('syncing', 'Enregistrement...');
 
-            const data = getDataObject();
-            firebase.database().ref('paie').set(data)
-                .then(() => {
-                    updateSyncStatus('connected', 'Synchronisé');
-                })
-                .catch((error) => {
-                    console.error('Erreur sync:', error);
-                    updateSyncStatus('error', 'Erreur sync');
-                });
+            saveDebounceTimer = setTimeout(() => {
+                isSavingToCloud = true;
+                const data = getDataObject();
+                firebase.database().ref('paie').set(data)
+                    .then(() => {
+                        updateSyncStatus('connected', 'Synchronisé');
+                        // Délai avant de réactiver l'écoute des changements
+                        setTimeout(() => { isSavingToCloud = false; }, 1000);
+                    })
+                    .catch((error) => {
+                        console.error('Erreur sync:', error);
+                        updateSyncStatus('error', 'Erreur sync');
+                        isSavingToCloud = false;
+                    });
+            }, 800);
         }
 
         function loadFromCloud(data) {
