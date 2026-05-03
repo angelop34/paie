@@ -1114,8 +1114,8 @@ const firebaseConfig = {
                     'zone5': 7.74
                 }
             },
-            // Majoration nuit (100% du taux horaire selon tes bulletins)
-            majorationNuit: 1.00, // 100% = taux horaire complet en majoration
+            // Majoration nuit BTP (25% du taux horaire)
+            majorationNuit: 0.25, // 25% du taux horaire
 
             // Primes BTP - SOUMISES à cotisations (vont dans le brut)
             primesSoumises: [
@@ -1333,7 +1333,7 @@ const firebaseConfig = {
                                 <span class="unit">h</span>
                             </div>
                             <div class="field field-with-unit">
-                                <label>Majoration nuit<br><span class="sublabel" id="sublabel-nuit-${id}">+${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€/h (100%)</span></label>
+                                <label>Majoration nuit<br><span class="sublabel" id="sublabel-nuit-${id}">+${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€/h (25%)</span></label>
                                 <input type="number" data-field="nuit" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
                                 <span class="unit">h</span>
                             </div>
@@ -1694,7 +1694,7 @@ const firebaseConfig = {
             const subHs50 = document.getElementById(`sublabel-hs50-${empId}`);
             if (subHs50) subHs50.textContent = `${(tauxHoraire * CONFIG.tauxHS.hs50).toFixed(2)}€/h`;
             const subNuit = document.getElementById(`sublabel-nuit-${empId}`);
-            if (subNuit) subNuit.textContent = `+${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€/h (100%)`;
+            if (subNuit) subNuit.textContent = `+${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€/h (25%)`;
 
             let brutVariable = 0;  // Éléments soumis (dans le brut)
             let netVariable = 0;   // Éléments exonérés (versés en net)
@@ -2150,7 +2150,7 @@ const firebaseConfig = {
 
                         if (hs25 > 0) lines.push({ label: 'Heures sup. 25%', qty: `${hs25}h`, rate: `${(tauxHoraire * 1.25).toFixed(2)}€`, amount: `${(hs25 * tauxHoraire * 1.25).toFixed(2)} €` });
                         if (hs50 > 0) lines.push({ label: 'Heures sup. 50%', qty: `${hs50}h`, rate: `${(tauxHoraire * 1.50).toFixed(2)}€`, amount: `${(hs50 * tauxHoraire * 1.50).toFixed(2)} €` });
-                        if (nuit > 0) lines.push({ label: 'Majoration nuit 100%', qty: `${nuit}h`, rate: `${tauxHoraire.toFixed(2)}€`, amount: `${(nuit * tauxHoraire).toFixed(2)} €` });
+                        if (nuit > 0) lines.push({ label: 'Majoration nuit 25%', qty: `${nuit}h`, rate: `${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€`, amount: `${(nuit * tauxHoraire * CONFIG.majorationNuit).toFixed(2)} €` });
                     }
 
                     // Absences & Congés (avec dates si renseignées)
