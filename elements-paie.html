@@ -1281,16 +1281,16 @@ const firebaseConfig = {
                             <button type="button" class="category-btn ${category === 'ouvrier' ? 'active' : ''}" onclick="setCategory(${id}, 'ouvrier')">Ouvrier</button>
                             <button type="button" class="category-btn ${category === 'etam' ? 'active etam' : ''}" onclick="setCategory(${id}, 'etam')">ETAM</button>
                         </div>
-                        <div class="salary-input-group" id="salary-group-${id}" style="display:${category === 'etam' ? 'flex' : 'none'}">
+                        <div class="salary-input-group" id="salary-group-${id}" style="display:flex">
                             <label>Taux horaire</label>
-                            <input type="number" id="taux-horaire-${id}" value="${tauxHoraire}" step="0.01" min="11.88" oninput="updateSimulation(${id})">
+                            <input type="number" id="taux-horaire-${id}" value="${tauxHoraire}" step="0.01" min="12.02" oninput="updateSimulation(${id})">
                             <span>€/h</span>
                         </div>
                     </div>
                     <div class="simulation-box" id="sim-${id}">
                         <div class="sim-item">
-                            <div class="sim-label" id="sim-base-label-${id}">${category === 'etam' ? 'Base ETAM' : 'Base SMIC'}</div>
-                            <div class="sim-value" id="sim-base-${id}">${category === 'etam' ? formatMoney(tauxHoraire * 151.67) : '1 801,84 €'}</div>
+                            <div class="sim-label" id="sim-base-label-${id}">${category === 'etam' ? 'Base ETAM' : 'Base ouvrier'}</div>
+                            <div class="sim-value" id="sim-base-${id}">${formatMoney(tauxHoraire * 151.67)}</div>
                         </div>
                         <div class="sim-divider"></div>
                         <div class="sim-item">
@@ -1307,7 +1307,7 @@ const firebaseConfig = {
                         <div class="sim-divider"></div>
                         <div class="sim-item">
                             <div class="sim-label">= Brut</div>
-                            <div class="sim-value" id="sim-brut-${id}">${category === 'etam' ? formatMoney(tauxHoraire * 151.67) : '1 801,84 €'}</div>
+                            <div class="sim-value" id="sim-brut-${id}">${formatMoney(tauxHoraire * 151.67)}</div>
                         </div>
                         <div class="sim-divider" id="sim-net-divider-${id}" style="display:${category === 'ouvrier' ? 'block' : 'none'}"></div>
                         <div class="sim-item" id="sim-net-container-${id}" style="display:${category === 'ouvrier' ? 'block' : 'none'}">
@@ -1320,20 +1320,20 @@ const firebaseConfig = {
                 <div class="employee-body">
                     <!-- Temps de travail - Ouvrier only -->
                     <div class="section-group section-ouvrier-only">
-                        <div class="section-label">Temps de travail <span class="info">SMIC ${CONFIG.smic.horaire}€/h</span></div>
+                        <div class="section-label">Temps de travail <span class="info" id="taux-info-${id}">Taux ${tauxHoraire.toFixed(2)}€/h</span></div>
                         <div class="fields-grid">
                             <div class="field field-with-unit">
-                                <label>Heures sup. 25%<br><span class="sublabel">${(CONFIG.smic.horaire * CONFIG.tauxHS.hs25).toFixed(2)}€/h</span></label>
+                                <label>Heures sup. 25%<br><span class="sublabel" id="sublabel-hs25-${id}">${(tauxHoraire * CONFIG.tauxHS.hs25).toFixed(2)}€/h</span></label>
                                 <input type="number" data-field="hs25" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
                                 <span class="unit">h</span>
                             </div>
                             <div class="field field-with-unit">
-                                <label>Heures sup. 50%<br><span class="sublabel">${(CONFIG.smic.horaire * CONFIG.tauxHS.hs50).toFixed(2)}€/h</span></label>
+                                <label>Heures sup. 50%<br><span class="sublabel" id="sublabel-hs50-${id}">${(tauxHoraire * CONFIG.tauxHS.hs50).toFixed(2)}€/h</span></label>
                                 <input type="number" data-field="hs50" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
                                 <span class="unit">h</span>
                             </div>
                             <div class="field field-with-unit">
-                                <label>Majoration nuit<br><span class="sublabel">+${(CONFIG.smic.horaire * CONFIG.majorationNuit).toFixed(2)}€/h (100%)</span></label>
+                                <label>Majoration nuit<br><span class="sublabel" id="sublabel-nuit-${id}">+${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€/h (100%)</span></label>
                                 <input type="number" data-field="nuit" placeholder="0" min="0" step="0.5" oninput="validateInput(this); updateSimulation(${id})">
                                 <span class="unit">h</span>
                             </div>
@@ -1342,7 +1342,7 @@ const firebaseConfig = {
 
                     <!-- Absences - Common -->
                     <div class="section-group">
-                        <div class="section-label">Absences & Congés <span class="info" id="absence-info-${id}">7h/j = ${(7 * CONFIG.smic.horaire).toFixed(2)}€</span></div>
+                        <div class="section-label">Absences & Congés <span class="info" id="absence-info-${id}">7h/j = ${(7 * tauxHoraire).toFixed(2)}€</span></div>
                         <div class="absences-grid">
                             <div class="absence-item" id="absence-item-conges-${id}">
                                 <div class="absence-label">
@@ -1603,12 +1603,23 @@ const firebaseConfig = {
             activeBtn.classList.add('active');
             if (category === 'etam') activeBtn.classList.add('etam');
 
-            // Show/hide salary input
+            // Salary input always visible
             const salaryGroup = document.getElementById(`salary-group-${empId}`);
-            salaryGroup.style.display = category === 'etam' ? 'flex' : 'none';
+            salaryGroup.style.display = 'flex';
+
+            // Reset taux horaire au défaut de la nouvelle catégorie si encore au défaut de l'ancienne
+            const tauxInput = document.getElementById(`taux-horaire-${empId}`);
+            if (tauxInput) {
+                const currentVal = parseFloat(tauxInput.value);
+                if (category === 'etam' && currentVal === CONFIG.smic.horaire) {
+                    tauxInput.value = 17.62;
+                } else if (category === 'ouvrier' && currentVal === 17.62) {
+                    tauxInput.value = CONFIG.smic.horaire;
+                }
+            }
 
             // Update base label
-            document.getElementById(`sim-base-label-${empId}`).textContent = category === 'etam' ? 'Base ETAM' : 'Base SMIC';
+            document.getElementById(`sim-base-label-${empId}`).textContent = category === 'etam' ? 'Base ETAM' : 'Base ouvrier';
 
             // Show/hide net exonéré for ouvrier only
             document.getElementById(`sim-net-divider-${empId}`).style.display = category === 'ouvrier' ? 'block' : 'none';
@@ -1670,14 +1681,20 @@ const firebaseConfig = {
             const category = card.dataset.category || 'ouvrier';
             const isETAM = category === 'etam';
 
-            // Taux horaire selon catégorie
-            let tauxHoraire = CONFIG.smic.horaire;
-            let salaireMensuel = CONFIG.smic.mensuel;
+            // Taux horaire saisi (défaut SMIC pour ouvrier, 17.62 pour ETAM)
+            const tauxFallback = isETAM ? 17.62 : CONFIG.smic.horaire;
+            const tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || tauxFallback;
+            const salaireMensuel = tauxHoraire * 151.67;
 
-            if (isETAM) {
-                tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || 17.62;
-                salaireMensuel = tauxHoraire * 151.67;
-            }
+            // Mettre à jour les libellés dynamiques (HS / nuit / info taux)
+            const tauxInfo = document.getElementById(`taux-info-${empId}`);
+            if (tauxInfo) tauxInfo.textContent = `Taux ${tauxHoraire.toFixed(2)}€/h`;
+            const subHs25 = document.getElementById(`sublabel-hs25-${empId}`);
+            if (subHs25) subHs25.textContent = `${(tauxHoraire * CONFIG.tauxHS.hs25).toFixed(2)}€/h`;
+            const subHs50 = document.getElementById(`sublabel-hs50-${empId}`);
+            if (subHs50) subHs50.textContent = `${(tauxHoraire * CONFIG.tauxHS.hs50).toFixed(2)}€/h`;
+            const subNuit = document.getElementById(`sublabel-nuit-${empId}`);
+            if (subNuit) subNuit.textContent = `+${(tauxHoraire * CONFIG.majorationNuit).toFixed(2)}€/h (100%)`;
 
             let brutVariable = 0;  // Éléments soumis (dans le brut)
             let netVariable = 0;   // Éléments exonérés (versés en net)
@@ -1710,9 +1727,9 @@ const firebaseConfig = {
                 const hs50 = parseFloat(card.querySelector('[data-field="hs50"]')?.value) || 0;
                 const nuit = parseFloat(card.querySelector('[data-field="nuit"]')?.value) || 0;
 
-                brutVariable += hs25 * (CONFIG.smic.horaire * CONFIG.tauxHS.hs25);
-                brutVariable += hs50 * (CONFIG.smic.horaire * CONFIG.tauxHS.hs50);
-                brutVariable += nuit * (CONFIG.smic.horaire * CONFIG.majorationNuit);
+                brutVariable += hs25 * (tauxHoraire * CONFIG.tauxHS.hs25);
+                brutVariable += hs50 * (tauxHoraire * CONFIG.tauxHS.hs50);
+                brutVariable += nuit * (tauxHoraire * CONFIG.majorationNuit);
 
                 // Indemnités repas : partie soumise dans brut, partie exonérée en net
                 const repas = parseFloat(card.querySelector('[data-field="repas"]')?.value) || 0;
@@ -1876,12 +1893,13 @@ const firebaseConfig = {
             document.querySelectorAll('.employee-card').forEach(card => {
                 const empId = card.id.split('-')[1];
                 const category = card.dataset.category || 'ouvrier';
-                const tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || 17.62;
+                const tauxFallback = category === 'etam' ? 17.62 : CONFIG.smic.horaire;
+                const tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || tauxFallback;
 
                 const emp = {
                     name: card.querySelector('.emp-name').value,
                     category: category,
-                    tauxHoraire: category === 'etam' ? tauxHoraire : null,
+                    tauxHoraire: tauxHoraire,
                     fields: {},
                     dates: {},
                     primes: {},
@@ -2096,11 +2114,9 @@ const firebaseConfig = {
                     const category = card.dataset.category || 'ouvrier';
                     const isETAM = category === 'etam';
 
-                    // Taux horaire selon catégorie
-                    let tauxHoraire = CONFIG.smic.horaire;
-                    if (isETAM) {
-                        tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || 17.62;
-                    }
+                    // Taux horaire saisi (défaut SMIC pour ouvrier, 17.62 pour ETAM)
+                    const tauxFallback = isETAM ? 17.62 : CONFIG.smic.horaire;
+                    const tauxHoraire = parseFloat(document.getElementById(`taux-horaire-${empId}`)?.value) || tauxFallback;
 
                     // Récupérer toutes les données
                     const conges = parseFloat(card.querySelector('[data-field="conges"]')?.value) || 0;
@@ -2132,9 +2148,9 @@ const firebaseConfig = {
                         const hs50 = parseFloat(card.querySelector('[data-field="hs50"]')?.value) || 0;
                         const nuit = parseFloat(card.querySelector('[data-field="nuit"]')?.value) || 0;
 
-                        if (hs25 > 0) lines.push({ label: 'Heures sup. 25%', qty: `${hs25}h`, rate: `${(CONFIG.smic.horaire * 1.25).toFixed(2)}€`, amount: `${(hs25 * CONFIG.smic.horaire * 1.25).toFixed(2)} €` });
-                        if (hs50 > 0) lines.push({ label: 'Heures sup. 50%', qty: `${hs50}h`, rate: `${(CONFIG.smic.horaire * 1.50).toFixed(2)}€`, amount: `${(hs50 * CONFIG.smic.horaire * 1.50).toFixed(2)} €` });
-                        if (nuit > 0) lines.push({ label: 'Majoration nuit 100%', qty: `${nuit}h`, rate: `${CONFIG.smic.horaire.toFixed(2)}€`, amount: `${(nuit * CONFIG.smic.horaire).toFixed(2)} €` });
+                        if (hs25 > 0) lines.push({ label: 'Heures sup. 25%', qty: `${hs25}h`, rate: `${(tauxHoraire * 1.25).toFixed(2)}€`, amount: `${(hs25 * tauxHoraire * 1.25).toFixed(2)} €` });
+                        if (hs50 > 0) lines.push({ label: 'Heures sup. 50%', qty: `${hs50}h`, rate: `${(tauxHoraire * 1.50).toFixed(2)}€`, amount: `${(hs50 * tauxHoraire * 1.50).toFixed(2)} €` });
+                        if (nuit > 0) lines.push({ label: 'Majoration nuit 100%', qty: `${nuit}h`, rate: `${tauxHoraire.toFixed(2)}€`, amount: `${(nuit * tauxHoraire).toFixed(2)} €` });
                     }
 
                     // Absences & Congés (avec dates si renseignées)
