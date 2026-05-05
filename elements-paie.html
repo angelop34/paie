@@ -1105,13 +1105,12 @@ const firebaseConfig = {
                 repas_exonere: 10.30,    // Partie exonérée (en net)
                 repas_total: 13.00,      // Total versé
                 trajet: {
-                    '0-5km': 0,
                     'zone1a': 2.06,
-                    'zone1b': 2.58,
-                    'zone2': 3.87,
-                    'zone3': 5.16,
-                    'zone4': 6.45,
-                    'zone5': 7.74
+                    'zone1b': 2.06,
+                    'zone2': 4.38,
+                    'zone3': 5.58,
+                    'zone4': 7.42,
+                    'zone5': 9.40
                 }
             },
             // Majoration nuit BTP (25% du taux horaire)
@@ -1658,13 +1657,12 @@ const firebaseConfig = {
             row.innerHTML = `
                 <select class="trajet-zone" onchange="updateSimulation(${empId}); saveData();">
                     <option value="">-- Sélectionner une zone --</option>
-                    <option value="0-5km" ${zone === '0-5km' ? 'selected' : ''}>0-5 km (0€)</option>
-                    <option value="zone1a" ${zone === 'zone1a' ? 'selected' : ''}>Zone 1a - 5-10km (2,06€)</option>
-                    <option value="zone1b" ${zone === 'zone1b' ? 'selected' : ''}>Zone 1b - 10-20km (2,58€)</option>
-                    <option value="zone2" ${zone === 'zone2' ? 'selected' : ''}>Zone 2 - 20-30km (3,87€)</option>
-                    <option value="zone3" ${zone === 'zone3' ? 'selected' : ''}>Zone 3 - 30-40km (5,16€)</option>
-                    <option value="zone4" ${zone === 'zone4' ? 'selected' : ''}>Zone 4 - 40-50km (6,45€)</option>
-                    <option value="zone5" ${zone === 'zone5' ? 'selected' : ''}>Zone 5 - +50km (7,74€)</option>
+                    <option value="zone1a" ${zone === 'zone1a' ? 'selected' : ''}>Zone 1a - 0 à 5 km (2,06€)</option>
+                    <option value="zone1b" ${zone === 'zone1b' ? 'selected' : ''}>Zone 1b - 5 à 10 km (2,06€)</option>
+                    <option value="zone2" ${zone === 'zone2' ? 'selected' : ''}>Zone 2 - 10 à 20 km (4,38€)</option>
+                    <option value="zone3" ${zone === 'zone3' ? 'selected' : ''}>Zone 3 - 20 à 30 km (5,58€)</option>
+                    <option value="zone4" ${zone === 'zone4' ? 'selected' : ''}>Zone 4 - 30 à 40 km (7,42€)</option>
+                    <option value="zone5" ${zone === 'zone5' ? 'selected' : ''}>Zone 5 - 40 à 50 km (9,40€)</option>
                 </select>
                 <input type="number" class="trajet-jours" placeholder="Nb jours" min="0" value="${jours}" oninput="validateInput(this); updateSimulation(${empId}); saveData();">
                 <button class="btn-remove" onclick="this.parentElement.remove(); updateSimulation(${empId}); saveData();">×</button>
